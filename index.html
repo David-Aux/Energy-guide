@@ -5034,6 +5034,8 @@ Already have an account? <a href="#" onclick="showScreen('installer-login'); ret
   function l4i_calculate(){if(!l4i_appliances.length)return;l4i__egS=l4i__runEngine(l4i_appliances);l4i__applyPanelMode(l4i__egS,'A');l4i__egS=l4i__buildBOM(l4i__egS,0);l4i__renderResults(l4i__egS);
     try {
       var b0 = (l4i__egS && l4i__egS.opts && l4i__egS.opts[l4i__egS.selBat || 0]) || {};
+      var _cr={invKva:l4i__egS.inv.kva,numPanels:l4i__egS.panels,lithiumPackKwh:b0.totalKwh||0,batUnits:b0.units||1,pvCable:l4i__egS.conn.pv.cab.s,battCable:l4i__egS.conn.bat.cab.s,acCable:l4i__egS.conn.ac.cab.s,pvBreaker:l4i__egS.conn.pv.brk.a,battBreaker:l4i__egS.conn.bat.brk.a,acBreaker:l4i__egS.conn.ac.brk.a};
+      var _costs=(typeof egBuildCostBreakdown==='function'? egBuildCostBreakdown(_cr):{})||{};
       const inverterWatts = Math.round((l4i__egS.inv && l4i__egS.inv.kva ? l4i__egS.inv.kva * 1000 : 0));
       const panelModelText = `${Math.round((l4i__egS.panelW || 550))}W Solar Panel`;
       instCalculationResult = {
@@ -5060,8 +5062,24 @@ Already have an account? <a href="#" onclick="showScreen('installer-login'); ret
         pvBreaker: l4i__egS.conn.pv.brk.a,
         battBreaker: l4i__egS.conn.bat.brk.a,
         acBreaker: l4i__egS.conn.ac.brk.a,
-        panelUnitPrice: (typeof EG_PANEL_PRICE_550W !== 'undefined' ? EG_PANEL_PRICE_550W : ((typeof EG_PANEL_PRICE_500W !== 'undefined' ? EG_PANEL_PRICE_500W : 130000))),
-        totalCost: l4i__egS.total || 0,
+        panelUnitPrice: _costs.panelUnitPrice || (typeof EG_PANEL_PRICE_550W !== 'undefined' ? EG_PANEL_PRICE_550W : ((typeof EG_PANEL_PRICE_500W !== 'undefined' ? EG_PANEL_PRICE_500W : 130000))),
+        panelCost: Number(_costs.panelCost || 0),
+        inverterCost: Number(_costs.inverterCost || 0),
+        batteryUnitPrice: Number(_costs.batteryUnitPrice || 0),
+        batteryCost: Number(_costs.batteryCost || 0),
+        pvBreakerPrice: Number(_costs.pvBreakerPrice || 0),
+        batteryBreakerPrice: Number(_costs.batteryBreakerPrice || 0),
+        acBreakerPrice: Number(_costs.acBreakerPrice || 0),
+        pvCablePerMeter: Number(_costs.pvCablePerMeter || 0),
+        batteryCablePerMeter: Number(_costs.batteryCablePerMeter || 0),
+        acCablePerMeter: Number(_costs.acCablePerMeter || 0),
+        pvCableCost: Number(_costs.pvCableCost || 0),
+        batteryCableCost: Number(_costs.batteryCableCost || 0),
+        acCableCost: Number(_costs.acCableCost || 0),
+        tubularUnitPrice: Number(_costs.tubularUnitPrice || 0),
+        tubularAltCost: Number(_costs.tubularAltCost || 0),
+        leadTotalBatteries: Number(_costs.leadTotalBatteries || 0),
+        totalCost: Number(_costs.totalCost || l4i__egS.total || 0),
         appliances: l4i_appliances.slice(),
 
         // Version 13 installer downstream compatibility fields
@@ -11710,11 +11728,16 @@ let egI_appliances = [];
 
       showScreen('user-cost-breakdown');
       // Hide user-only actions reliably in installer mode
+      const installerMarketBtn = document.querySelector('#user-cost-breakdown button[onclick*="openInstallerMarketplace"]');
+      const vendorMarketBtn = document.querySelector('#user-cost-breakdown button[onclick*="openVendorMarketplace"]');
+      if (installerMarketBtn) { installerMarketBtn.style.display = 'none'; installerMarketBtn.hidden = true; }
+      if (vendorMarketBtn) { vendorMarketBtn.style.display = 'none'; vendorMarketBtn.hidden = true; }
       document.querySelectorAll('#user-cost-breakdown button').forEach(btn => {
         const t = (btn.textContent || '').toLowerCase();
-        if (t.includes('installers near me') || t.includes('view vendors')) btn.style.display = 'none';
+        if (t.includes('installers near me') || t.includes('view vendors')) { btn.style.display = 'none'; btn.hidden = true; }
         if (t.includes('back')) {
           btn.style.display = 'block';
+          btn.hidden = false;
           btn.textContent = '← Back to Calculator';
           btn.onclick = () => { showScreen('installer-calculator'); forceTop('installer-calculator'); };
         }
@@ -11795,6 +11818,21 @@ let egI_appliances = [];
     const pvBreaker = r.pvBreaker || 16;
     const battBreaker = r.battBreaker || 125;
     const acBreaker = r.acBreaker || 16;
+    let builtCosts = null;
+    if (typeof egBuildCostBreakdown === 'function') {
+      builtCosts = egBuildCostBreakdown({
+        invKva: Math.max(1, Math.ceil(requiredInverter / 1000)),
+        lithiumPackKwh: batteryBankKwh,
+        numPanels: panelCount,
+        leadTotalBatteries: Number(r.leadTotalBatteries || 0),
+        pvCable,
+        battCable,
+        acCable,
+        pvBreaker,
+        battBreaker,
+        acBreaker
+      }) || null;
+    }
     const out = {
       ...r,
       appliances: Array.isArray(apps) ? apps : (Array.isArray(r.appliances) ? r.appliances : []),
@@ -11807,11 +11845,28 @@ let egI_appliances = [];
       batteryType: r.batteryType || 'Lithium',
       batteryBankKwh,
       panel: r.panel || { model: `${panelWatts}W Solar Panel`, watts: panelWatts },
-      totalCost: Number(r.totalCost || 0),
+      panelUnitPrice: Number(r.panelUnitPrice || (builtCosts && builtCosts.panelUnitPrice) || 130000),
+      panelCost: Number(r.panelCost || (builtCosts && builtCosts.panelCost) || 0),
+      inverterCost: Number(r.inverterCost || (builtCosts && builtCosts.inverterCost) || 0),
+      batteryUnitPrice: Number(r.batteryUnitPrice || (builtCosts && builtCosts.batteryUnitPrice) || 0),
+      batteryCost: Number(r.batteryCost || (builtCosts && builtCosts.batteryCost) || 0),
+      pvBreakerPrice: Number(r.pvBreakerPrice || (builtCosts && builtCosts.pvBreakerPrice) || 0),
+      batteryBreakerPrice: Number(r.batteryBreakerPrice || (builtCosts && builtCosts.batteryBreakerPrice) || 0),
+      acBreakerPrice: Number(r.acBreakerPrice || (builtCosts && builtCosts.acBreakerPrice) || 0),
+      pvCablePerMeter: Number(r.pvCablePerMeter || (builtCosts && builtCosts.pvCablePerMeter) || 0),
+      batteryCablePerMeter: Number(r.batteryCablePerMeter || (builtCosts && builtCosts.batteryCablePerMeter) || 0),
+      acCablePerMeter: Number(r.acCablePerMeter || (builtCosts && builtCosts.acCablePerMeter) || 0),
+      pvCableCost: Number(r.pvCableCost || (builtCosts && builtCosts.pvCableCost) || 0),
+      batteryCableCost: Number(r.batteryCableCost || (builtCosts && builtCosts.batteryCableCost) || 0),
+      acCableCost: Number(r.acCableCost || (builtCosts && builtCosts.acCableCost) || 0),
+      tubularUnitPrice: Number(r.tubularUnitPrice || (builtCosts && builtCosts.tubularUnitPrice) || 0),
+      tubularAltCost: Number(r.tubularAltCost || (builtCosts && builtCosts.tubularAltCost) || 0),
+      leadTotalBatteries: Number(r.leadTotalBatteries || (builtCosts && builtCosts.leadTotalBatteries) || 0),
+      totalCost: Number(r.totalCost || (builtCosts && builtCosts.totalCost) || 0),
       costs: r.costs || {
-        panels: { cost: Number((r.panelUnitPrice || 130000) * panelCount) },
-        inverter: { cost: Number(r.inverterCost || 0) },
-        batteries: { cost: Number(r.batteryCost || 0) },
+        panels: { cost: Number(r.panelCost || (builtCosts && builtCosts.panelCost) || (r.panelUnitPrice || 130000) * panelCount) },
+        inverter: { cost: Number(r.inverterCost || (builtCosts && builtCosts.inverterCost) || 0) },
+        batteries: { cost: Number(r.batteryCost || (builtCosts && builtCosts.batteryCost) || 0) },
         controller: { cost: Number(r.controllerCost || 0) },
         cables: { cost: Number(r.cablesCost || 0) },
         installation: { cost: Number(r.installationCost || 0) },
