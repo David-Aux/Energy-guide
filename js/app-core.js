@@ -1,12 +1,1 @@
-const corePayload = {
-  id: currentUser.id,
-  role: currentUser.role || 'vendor',
-  is_vendor: true,
-  company_name: get('vpBusiness') || get('vpFullName'),
-  full_name: get('vpFullName'),
-  business_name: get('vpBusiness'),
-  phone: get('vpPhone'),
-  state: get('vpState'),
-  city: get('vpCity'),
-  address: get('vpAddress'),
-};
+const extPayload = { ...corePayload, full_name: get('vpFullName'), business_name: get('vpBusiness'), delivery_coverage: get('vpDelivery'), sells_panels: chk('vpPanels'), sells_inverters: chk('vpInverters'), sells_lithium: chk('vpLithium'), sells_tubular: chk('vpTubular'), sells_accessories: chk('vpAccessories'), offers_installation: get('vpOffersInstall'), shop_address: get('vpAddress'), whatsapp_number: get('vpWhatsapp'), brands_carried: get('vpBrands'), cac_number: get('vpCac'), cac_document_url, business_description: get('vpDesc'), };
