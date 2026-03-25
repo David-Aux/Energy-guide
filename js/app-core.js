@@ -1,5 +1,12 @@
-const extPayload = {
-  full_name: installerProfile.full_name,
-  business_name: installerProfile.business_name,
-  // other fields from original extPayload...
+const corePayload = {
+  id: currentUser.id,
+  role: currentUser.role || 'vendor',
+  is_vendor: true,
+  company_name: get('vpBusiness') || get('vpFullName'),
+  full_name: get('vpFullName'),
+  business_name: get('vpBusiness'),
+  phone: get('vpPhone'),
+  state: get('vpState'),
+  city: get('vpCity'),
+  address: get('vpAddress'),
 };
